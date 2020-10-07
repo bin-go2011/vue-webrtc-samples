@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Camera</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+
+        const constraints = {
+            audio: false,
+            video: true
+        }
+
+        const component = defineComponent({
+            data() {
+
+            },
+            methods: {
+                async openCamera() {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                        console.log('handleSuccess:');
+                        this.handleSuccess(stream);
+                    } catch (e) {
+                        this.handleError(e);
+                    }
+                },
+
+                handleSuccess(stream) {
+                    const video = this.$refs.myVideo;
+                    const videoTracks = stream.getVideoTracks();
+                    console.log('通过设置限制条件获取到流：', constraints);
+                    console.log(`使用的视频设备： ${videoTracks[0].label}`)
+                    video.srcObject = stream;
+                },
+
+                handleError(error) {
+                    if (error.name === 'ConstraintNotSatisfiedError') {
+                        const v = constraints.video;
+                        //宽高尺寸错误
+                        console.log(`宽：${v.width.exact} 高：${v.height.exact}`)
+                    } else if (error.name === 'NotAllowedError') {
+                        console.log('没有摄像头和麦克风使用权限，请点击允许按钮');
+                    }
+                    console.log(`getUserMedia错误：${error.name}`, error)
+                }
+            },
+            template: `
+                <div>
+                    <h1>
+                        <span>摄像头示例</span>
+                    </h1>
+                    <video ref="myVideo" autoplay playsInline></video>
+                    <div>
+                        <button @click="openCamera">打开摄像头</button>
+                    </div>
+                </div>
+            `
+        });
+
+        createApp(component)
+            .mount('#app')
+    </script>
+</body>
+</html>
