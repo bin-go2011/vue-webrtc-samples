@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>共享屏幕示例</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+        const component = defineComponent({
+            methods: {
+                async startScreenShare() {
+                    try {
+                        const stream = await navigator.mediaDevices.getDisplayMedia({video: true});
+                        console.log('handleSuccess:');
+                        this.handleSuccess(stream);
+                    } catch(e) {
+                        this.handleError(e);
+                    }
+                },
+                handleSuccess(stream) {
+                    const video = this.$refs.myVideo;
+                    const videoTracks = stream.getVideoTracks();
+                    console.log(`视频资源名称：${videoTracks[0].label}`);
+                    video.srcObject = stream;
+                },
+                handleError(error) {
+                    if (error.name === 'ConstraintNotSatisfiedError') {
+                        const v = constraints.video;
+                        console.error(`宽：${v.width.exact} 高：${v.height.exact}设备不支持`);
+                    } else if (error.name === 'PermissionDeniedError') {
+                        console.error('没有摄像头和麦克风使用权限，请点击允许按钮');
+                    }
+                    console.error(`getUserMedia错误：${error}`);
+                }
+            },
+            
+            template: `
+                <div>
+                    <h1>
+                        <span>共享屏幕示例</span>
+                    </h1>
+                    <video ref="myVideo" autoplay playsInline></video>
+                    <div>
+                        <button @click="startScreenShare">开始共享</button>
+                    </div>
+                </div>
+            `
+        });
+
+        createApp(component).mount('#app');
+    </script>
+</body>
+</html>
