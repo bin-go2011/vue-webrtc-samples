@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频滤镜示例</title>
+    <script src="https://unpkg.com/vue@next"></script>
+    <style>
+        .none {
+            filter: none;
+        }
+        .blur {
+            filter: blur(3px);
+        }
+        .grayscale {
+            filter: grayscale(1);
+        }
+        .invert {
+            filter: invert(1);
+        }
+        .sepia {
+            filter: sepia(1);
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+        let video;
+
+        const component = defineComponent({
+            data() {
+                return {
+                    filterEffect: 'none'
+                }
+            },
+            methods: {
+                handleSuccess(stream) {
+                    video.srcObject = stream;
+                },
+                handleError(error) {
+                    console.error('navigator.mediaDevices.getUserMedia error:', error);
+                }
+            },
+
+            mounted() {
+                video = this.$refs.video;
+                const constraints = {
+                    audio: false,
+                    video: true
+                };
+                
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(this.handleSuccess)
+                    .catch(this.handleError)
+            },
+
+            template: `
+                <div>
+                    <h1>
+                        <span>视频滤镜示例</span>
+                    </h1>
+                    <video :class="filterEffect" ref="video" autoplay playsInline></video>
+                    <div>
+                        <select value="none" style="width:100px" v-model="filterEffect" >
+                            <option value="none">没有滤镜</option>
+                            <option value="blur">模糊</option>
+                            <option value="grayscale">灰度</option>
+                            <option value="invert">反转</option>
+                            <option value="sepia">深褐色</option>
+                        </select>
+                    </div>
+                </div>
+            `
+        });
+
+        createApp(component).mount('#app');
+    </script>
+</body>
+</html>
