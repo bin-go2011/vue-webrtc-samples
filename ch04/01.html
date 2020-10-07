@@ -17,9 +17,6 @@
         }
 
         const component = defineComponent({
-            data() {
-
-            },
             methods: {
                 async openCamera() {
                     try {
@@ -50,6 +47,7 @@
                     console.log(`getUserMedia错误：${error.name}`, error)
                 }
             },
+
             template: `
                 <div>
                     <h1>

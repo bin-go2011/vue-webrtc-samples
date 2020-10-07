@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>打开麦克风</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+        
+        const component = defineComponent({
+           methods: {
+               handleSuccess(stream) {
+                  let audio = this.$refs.audio;
+                  const audioTracks = stream.getAudioTracks();
+                  console.log('获取的音频设备为：' + audioTracks[0].label);
+                  stream.oninactive = () => {
+                      console.log('Stream停止');
+                  }
+                  audio.srcObject = stream;
+               },
+
+               handleError(error) {
+                  console.log('navigator.mediaDevices.getUserMedia error: ', error)
+               }
+           },  
+
+           mounted() {
+                const constraints = {
+                    audio: true,
+                    video: false
+                };
+                
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(this.handleSuccess)
+                    .catch(this.handleError);
+           },
+
+           template: `
+                <div>
+                    <h1>
+                        <span>麦克风示例</span>
+                    </h1>
+                    <audio ref="audio" controls autoplay></audio>
+                </div>
+           `
+        })
+
+        createApp(component)
+            .mount('#app')
+    </script>
+</body>
+</html>
