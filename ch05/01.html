@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>视频分辨率示例</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+
+        const qvgaConstraints = {
+            video: { width: { exact: 320 }, height: { exact: 240 }}
+        };
+        const vgaConstraints = {
+            video: { width: { exact: 640 }, height: { exact: 480 }}
+        };
+        const hdConstraints = {
+            video: { width: { exact: 1280 }, height: { exact: 720 }}
+        };
+        const fullhdConstraints = {
+            video: { width: { exact: 1920 }, height: { exact: 1080 }}
+        };
+        const twoKConstraints = {
+            video: { width: { exact: 2560 }, height: { exact: 1440 }}
+        };
+        const fourKConstraints = {
+            video: { width: { exact: 4096 }, height: { exact: 2160 }}
+        };
+        const eightKConstraints = {
+            video: { width: { exact: 7680 }, height: { exact: 4320 }}
+        };
+
+        const VideoResolutions = [
+            qvgaConstraints,
+            vgaConstraints,
+            hdConstraints,
+            fullhdConstraints,
+            twoKConstraints,
+            fourKConstraints,
+            eightKConstraints
+        ];
+
+        let video;
+
+        const component = defineComponent({
+            data() {
+                return {
+                    selectedIndex: null,
+                    stream: null
+                }
+            },
+
+            methods: {
+                getMedia(constraints) {
+                    if (stream) {
+                        stream.getTracks().forEach(track => {
+                            track.stop();
+                        })
+                    }
+                    navigator.mediaDevices.getUserMedia(constraints)
+                            .then(this.gotStream)
+                            .catch(this.handleError)
+                        
+                },
+                gotStream(mediaStream) {
+                    stream = mediaStream;
+                    video.srcObject = mediaStream;
+                    const track = mediaStream.getVideoTracks()[0];
+                    const constraints = track.getConstraints();
+                    console.log('约束条件为：', JSON.stringify(constraints));
+                },
+                handleSuccess(stream) {
+                    this.stream = stream;
+                    video.srcObject = stream;
+                },
+                handleError(error) {
+                    console.error('getUserMedia错误：', error);
+                }, 
+                handleChange(event, selectedIndex) {
+                    console.log(`selected ${selectedIndex}`)
+                    this.selectedIndex = selectedIndex;
+                },
+                dynamicChange() {
+                    const constraint = VideoResolutions[this.selectedIndex];
+                    console.log('应用高清效果：' + JSON.stringify(constraint));
+
+                    const track = this.stream.getVideoTracks()[0];
+                    track.applyConstraints(constraint)
+                        .then(()=>{
+                            console.log('动态改变分辨率成功...');
+                        })
+                        .catch(err=>{
+                            console.log('动态改变分辨率错误：', err);
+                        })                
+                }
+            },
+
+            mounted() {
+                video = this.$refs.video;
+                const constraints = {
+                    audio: false,
+                    video: true
+                };
+                
+                navigator.mediaDevices.getUserMedia(constraints)
+                    .then(this.handleSuccess)
+                    .catch(this.handleError)
+            },
+
+            template: `
+                <div>
+                    <h1>
+                        <span>视频分辨率示例</span>
+                    </h1>
+                    <video ref="video" playsInline autoplay></video>
+                    <div>
+                        <select value="vga" style="width:100px,margin-left:20px" @change="handleChange($event, $event.target.selectedIndex)">
+                            <option value="qvga">QVGA</option>                        
+                            <option value="vga">VGA</option>
+                            <option value="hd">高清</option>
+                            <option value="fullhd">超清</option>
+                            <option value="2k">2K</option>
+                            <option value="4k">4K</option>
+                            <option value="8k">8K</option>
+                        </select>
+                        <button style="margin-left:20px" @click="dynamicChange">动态设置</button>
+                    </div>
+                </div>
+            `
+        });
+
+        createApp(component).mount('#app');
+    </script>
+<body>
+    
+</body>
+</html>
