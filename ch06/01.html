@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaStreamAPI</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+
+        let stream;
+
+        const component = defineComponent({
+            methods: {
+                async openDevice() {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({
+                            audio: true,
+                            video: true
+                        });
+                        let video = this.$refs.myVideo;
+                        video.srcObject = stream;
+                    } catch(e) {
+                        console.log(`getUserMedia错误：` + error);
+                    }
+                },
+                btnGetTracks() {
+                    console.log("getTracks");
+                    console.log(stream.getTracks());
+                },
+                btnGetAudioTracks() {
+                    console.log("getAudioTracks");
+                    console.log(stream.getAudioTracks());
+                },
+                btnGetTrackById() {
+                    console.log("getTrackById");
+                    console.log(stream.getTrackById(stream.getAudioTracks()[0].id));
+                },
+                btnRemoveAudioTrack() {
+                    console.log("removeAudioTrack()");
+                    stream.removeTrack(stream.getAudioTracks()[0]);
+                },
+                btnGetVideoTracks() {
+                    console.log("getVideoTracks()");
+                    console.log(stream.getVideoTracks());
+                },
+                btnRemoveVideoTrack() {
+                    console.log("removeVideoTrack()");
+                    stream.removeTrack(stream.getVideoTracks()[0]);
+                }
+            },
+
+            mounted() {
+                this.openDevice();
+            },
+
+            template: `
+                <div>
+                    <h1>
+                        <span>MediaStreamAPI测试</span>
+                    </h1>
+                    <video ref="myVideo" autoplay playsInline></video>
+                    <div>
+                        <button @click="this.btnGetTracks" style="width:120px">获取所有轨道</button>
+                        <button @click="this.btnGetAudioTracks" style="width:120px">获取音频轨道</button>
+                        <button @click="this.btnGetTrackById" style="width:200px">根据Id获取音频轨道</button>
+                        <button @click="this.btnRemoveAudioTrack" style="width:120px">删除音频轨道</button>
+                        <button @click="this.btnGetVideoTracks" style="width:120px">获取视频轨道</button>
+                        <button @click="this.btnRemoveVideoTrack" style="width:120px">删除视频轨道</button>
+                    </div>
+                </div>
+            `
+        });
+
+        createApp(component).mount('#app');
+    </script>
+</body>
+</html>
