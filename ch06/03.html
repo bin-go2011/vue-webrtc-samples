@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaStreamAPI</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+
+        let stream;
+        let canvas;
+        let context;
+
+        const component = defineComponent({
+            methods: {
+                async startCaptureCanvas() {
+                    stream = await canvas.captureStream(10);
+                    const video = this.$refs.video;
+                    video.srcObject = stream;
+                    this.drawLine();
+                },
+                drawLine() {
+                    context = canvas.getContext("2d");
+                    context.fillStyle = '#CCC';
+                    context.fillRect(0, 0, 320, 240);
+                    context.lineWidth = 1;
+                    context.strokeStyle = "#FF0000";
+                    canvas.addEventListener("mousedown", this.startAction);
+                    canvas.addEventListener("mouseup", this.endAction);
+                },
+                startAction(event) {
+                    context.beginPath();
+                    context.moveTo(event.offsetX, event.offsetY);
+                    context.stroke();
+                    canvas.addEventListener("mousemove", this.moveAction);
+                },
+                moveAction(event) {
+                    context.lineTo(event.offsetX, event.offsetY);
+                    context.stroke();
+                },
+                endAction(event) {
+                    canvas.removeEventListener("mousemove", this.moveAction);
+                }
+            },
+
+            mounted() {
+                canvas = this.$refs.canvas;
+                this.startCaptureCanvas();
+            },
+
+            template: `
+                <div>
+                    <h1>
+                        <span>捕获Canvas作为媒体流示例</span>
+                    </h1>
+                    <div>
+                        <div>
+                            <canvas ref="canvas"></canvas>
+                        </div>
+                        <video ref="video" autoplay playsInline></video>
+                    </div>
+                </div>
+            `
+        });
+
+        createApp(component).mount('#app');
+    </script>
+</body>
+</html>
