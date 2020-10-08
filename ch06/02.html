@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediaStreamAPI</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+
+        const component = defineComponent({
+            methods: {
+                canPlay() {
+                    let sourceVideo = this.$refs.sourceVideo;
+                    let playerVideo = this.$refs.playerVideo;
+
+                    let stream;
+                    const fps = 0;
+                    if (sourceVideo.captureStream) {
+                        stream = sourceVideo.captureStream(fps);
+                    } else {
+                        console.log('captureStream不支持');
+                        stream = null;
+                    }
+
+                    playerVideo.srcObject = stream;
+                }
+            },
+            template: `
+                <div>
+                    <h1>
+                        <span>捕获Video作为媒体流示例</span>
+                    </h1>
+                    <video ref="sourceVideo" playsInline controls loop muted @canplay="canPlay">
+                        <source src="../assets/webrtc.mp4" type="video/mp4" />
+                    </video>
+                    <video ref="playerVideo" playsInline autoplay></video>
+                </div>
+            `
+        });
+
+        createApp(component).mount('#app');
+    </script>
+</body>
+</html>
