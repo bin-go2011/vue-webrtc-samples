@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RTCPeerConnection</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+
+        let localVideo;
+        let remoteVideo;
+        let localStream;
+        let peerConnA;
+        let peerConnB;
+
+        const component = defineComponent({
+            methods: {
+                async start() {
+                    console.log('开始获取本地媒体流');
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({
+                            audio: true,
+                            video: true
+                        });
+                        console.log('获取本地媒体流成功');
+                        localVideo.srcObject = stream;
+                        localStream = stream;
+                    } catch (error) {
+                        console.log('getUserMedia错误:' + error);
+                    }
+                },
+                async call() {
+                    console.log('开始呼叫...');
+                    const videoTracks = localStream.getVideoTracks();
+                    const audioTracks = localStream.getAudioTracks();
+
+                    if (videoTracks.length > 0) {
+                        console.log(`使用到视频设备为:${videoTracks[0].label}`);
+                    }
+                    if (audioTracks.length > 0) {
+                        console.log(`使用到音频设备为:${audioTracks[0].label}`);
+                    }
+
+                    let configuration = {
+                        "iceServers": [
+                            {
+                                "url": "stun:stun.l.google.com:19302"
+                            }
+                        ]
+                    };
+                    
+                    peerConnA = new RTCPeerConnection(configuration);
+                    console.log('创建本地PeerConnection成功: peerConnA');
+                    peerConnA.addEventListener('icecandidate', this.onIceCandidateA);
+
+                    peerConnB = new RTCPeerConnection(configuration);
+                    console.log('创建本地PeerConnection成功: peerConnB');
+                    peerConnB.addEventListener('icecandidate', this.onIceCandidateB);
+
+                    peerConnA.addEventListener('iceconnectionstatechange', this.onIceStateChangeA);
+                    peerConnB.addEventListener('iceconnectionstatechange', this.onIceStateChangeB);
+
+                    peerConnB.addEventListener('track', this.gotRemoteStream);
+                    localStream.getTracks().forEach((track)=>{
+                        peerConnA.addTrack(track, localStream);
+                    });
+                    console.log('将本地流添加到peerConnA里');
+                    try {
+                        console.log('peerConnA创建提议Offer开始');
+                        const offer = await peerConnA.createOffer();
+                        await this.onCreateOfferSuccess(offer);
+                    } catch (error) {
+                        this.onCreateSessionDescriptionError(error);
+                    }
+                },
+                onCreateSessionDescriptionError(error) {
+                    console.log(`创建会话描述SD错误:$error.toString()`);
+                },
+                async onCreateOfferSuccess(desc) {
+                    //peerConnA创建Offer返回的SDP信息
+                    console.log(`peerConnA创建Offer返回的SDP信息\n${desc.sdp}`);
+                    console.log('设置peerConnA的本地描述start');
+                    try {
+                        //设置peerConnA的本地描述
+                        await peerConnA.setLocalDescription(desc);
+                        this.onSetLocalSuccess(peerConnA);
+                    } catch (e) {
+                        this.onSetSessionDescriptionError();
+                    }
+
+                    console.log('peerConnB开始设置远端描述');
+                    try {
+                        //设置peerConnB的远端描述
+                        await peerConnB.setRemoteDescription(desc);
+                        this.onSetRemoteSuccess(peerConnB);
+                    } catch (e) {
+                        //创建会话描述错误
+                        this.onSetSessionDescriptionError();
+                    }
+
+                    console.log('peerConnB开始创建应答Answer');
+                    try {
+                        //创建应答Answer
+                        const answer = await peerConnB.createAnswer();
+                        //创建应答成功
+                        await this.onCreateAnswerSuccess(answer);
+                    } catch (e) {
+                        //创建会话描述错误
+                        this.onCreateSessionDescriptionError(e);
+                    }
+                },
+                //设置本地描述完成
+                onSetLocalSuccess(pc) {
+                    console.log(`${this.getName(pc)}设置本地描述完成:setLocalDescription`);
+                },
+                //设置远端描述完成
+                onSetRemoteSuccess(pc) {
+                    console.log(`${this.getName(pc)}设置远端描述完成:setRemoteDescription`);
+                },
+                //设置描述SD错误
+                onSetSessionDescriptionError(error) {
+                    console.log(`设置描述SD错误: ${error.toString()}`);
+                },
+                getName(pc) {
+                    return (pc === peerConnA) ? 'peerConnA' : 'peerConnB';
+                },
+                //获取到远端视频流
+                gotRemoteStream(e) {
+                    if (remoteVideo.srcObject !== e.streams[0]) {
+                    //取集合第一个元素
+                    remoteVideo.srcObject = e.streams[0];
+                    console.log('peerConnB开始接收远端流');
+                    }
+                },
+                //创建应答成功
+                async onCreateAnswerSuccess(desc) {
+                    //输出SDP信息
+                    console.log(`peerConnB的应答Answer数据:\n${desc.sdp}`);
+                    console.log('peerConnB设置本地描述开始:setLocalDescription');
+                    try {
+                        //设置peerConnB的本地描述信息
+                        await peerConnB.setLocalDescription(desc);
+                        this.onSetLocalSuccess(peerConnB);
+                    } catch (e) {
+                        this.onSetSessionDescriptionError(e);
+                    }
+                    console.log('peerConnA设置远端描述开始:setRemoteDescription');
+                    try {
+                        //设置peerConnA的远端描述,即peerConnB的应答信息
+                        await peerConnA.setRemoteDescription(desc);
+                        this.onSetRemoteSuccess(peerConnA);
+                    } catch (e) {
+                        this.onSetSessionDescriptionError(e);
+                    }
+                },
+                //Candidate事件回调方法
+                async onIceCandidateA(event) {
+                    try {
+                    if(event.candidate){
+                        //将会peerConnA的Candidate添加至peerConnB里
+                        await peerConnB.addIceCandidate(event.candidate);
+                        this.onAddIceCandidateSuccess(peerConnB);
+                    }
+                    } catch (e) {
+                    this.onAddIceCandidateError(peerConnB, e);
+                    }
+                    console.log(`IceCandidate数据:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+                },
+                //Candidate事件回调方法
+                async onIceCandidateB(event) {
+                    try {
+                    if(event.candidate){
+                        //将会peerConnB的Candidate添加至peerConnA里
+                        await peerConnA.addIceCandidate(event.candidate);
+                        this.onAddIceCandidateSuccess(peerConnA);
+                    }
+                    } catch (e) {
+                    this.onAddIceCandidateError(peerConnA, e);
+                    }
+                    console.log(`IceCandidate数据:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+                },
+                //添加Candidate成功
+                onAddIceCandidateSuccess(pc) {
+                    console.log(`${this.getName(pc)}添加IceCandidate成功`);
+                }, 
+                //添加Candidate失败
+                onAddIceCandidateError(pc, error) {
+                    console.log(`${this.getName(pc)}添加IceCandidate失败: ${error.toString()}`);
+                },
+                //监听ICE状态变化事件回调方法
+                onIceStateChangeA(event) {
+                    console.log(`peerConnA连接的ICE状态: ${peerConnA.iceConnectionState}`);
+                    console.log('ICE状态改变事件: ', event);
+                },
+                //监听ICE状态变化事件回调方法
+                onIceStateChangeB(event) {
+                    console.log(`peerConnB连接的ICE状态: ${peerConnB.iceConnectionState}`);
+                    console.log('ICE状态改变事件: ', event);
+                },
+                //断开连接
+                hangup() {
+                    console.log('结束会话');
+                    //关闭peerConnA
+                    peerConnA.close();
+                    //关闭peerConnB
+                    peerConnB.close();
+                    //peerConnA置为空
+                    peerConnA = null;
+                    //peerConnB置为空
+                    peerConnB = null;
+                }
+            },
+
+            mounted() {
+                localVideo = this.$refs.localVideo;
+                remoteVideo = this.$refs.remoteVideo;
+                localVideo.addEventListener('loadedmetadata', ()=>{
+                    console.log(`本地视频尺寸为: videoWidth: ${localVideo.videoWidth}px, videoHeight:${localVideo.videoHeight}px`);
+                });  
+                remoteVideo.addEventListener('loadedmetadata', ()=>{
+                    console.log(`远端视频尺寸为: videoWidth: ${remoteVideo.videoWidth}px, videoHeight:${remoteVideo.videoHeight}px`);
+                });  
+                remoteVideo.addEventListener('resize', ()=>{
+                    console.log(`远端视频尺寸为: videoWidth: ${remoteVideo.videoWidth}px, videoHeight:${remoteVideo.videoHeight}px`);
+                });  
+            },
+
+            template: `
+                <div>
+                    <h1>
+                        <span>RTCPeerConnection示例</span>
+                    </h1>
+                    <video ref="localVideo" playsInline autoplay muted></video>
+                    <video ref="remoteVideo" playsInline autoplay></video>
+                    <div>
+                        <button ref="startButton" @click="start" style="margin-right:10px">开始</button>
+                        <button ref="callButton" @click="call" style="margin-right:10px">呼叫</button>
+                        <button ref="hangupButton" @click="hangup" style="margin-right:10px">挂断</button>
+                    </div>
+                </div>
+            `    
+        });
+
+        createApp(component).mount('#app');
+    </script>
+</body>
+</html>
