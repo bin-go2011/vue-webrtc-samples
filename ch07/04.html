@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recording</title>
+    <script src="https://unpkg.com/vue@next"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        const { defineComponent, createApp } = Vue;
+
+        let mediaRecorder;
+        let recordedBlobs;
+        let stream;
+        let canvas;
+        let context;
+
+        const component = defineComponent({
+            methods: {
+                drawLine() {
+                    canvas = this.$refs.canvas;
+
+                    context = canvas.getContext("2d");
+                    context.fillStyle = '#CCC';
+                    context.fillRect(0,0,320,240);
+                    context.lineWidth = 1;
+
+                    context.strokeStyle = "#FF0000";
+                    canvas.addEventListener("mousedown", this.startAction);
+                    canvas.addEventListener("mouseup", this.endAction);
+                },
+                startAction(event) {
+                    context.beginPath();
+                    context.moveTo(event.offsetX, event.offsetY);
+                    context.stroke();
+                    canvas.addEventListener("mousemove", this.moveAction);
+                },
+                moveAction(event) {
+                    context.lineTo(event.offsetX, event.offsetY);
+                    context.stroke();
+                },
+                endAction() {
+                    canvas.removeEventListener("mousemove", this.moveAction);
+                },     
+                async startCaptureCanvas(e) {
+                    stream = await canvas.captureStream(10);
+                    const video = this.$refs.video;
+                    
+                    const videoTracks = stream.getVideoTracks();
+                    console.log(`视频资源名称:${videoTracks[0].label}`);
+                    window.stream = stream;
+
+                    video.srcObject = stream;
+                    this.startRecord();
+                },
+                startRecord(e) {
+                    recordedBlobs = [];
+                    try {
+                        mediaRecorder = new MediaRecorder(window.stream, {
+                            mimeType: 'video/webm;codec=vp9'
+                        });
+                    } catch (error) {
+                        console.error('创建MediaRecorder错误:', e);
+                        return;
+                    };
+
+                    mediaRecorder.onstop = (event) => {
+                        console.log('录制停止:', event);
+                        console.log('录制到Blobs数据为:', recordedBlobs);
+                    };
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        console.log('handleDataAvailable', event);
+                        if (event.data && event.data.size > 0) {
+                            recordedBlobs.push(event.data);
+                        }
+                    };
+                    mediaRecorder.start(10);
+                    console.log('MediaRecorder started', mediaRecorder);
+                },
+                stopRecord(e) {
+                    mediaRecorder.stop();
+                    stream.getTracks().forEach(track=>track.stop());
+                    stream = null;
+
+                    const blob = new Blob(recordedBlobs, { type: 'video/webm' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = 'canvas.webm';
+                    document.body.appendChild(a);
+                    a.click();
+                    setTimeout(() => {
+                        document.body.removeChild(a);
+                        // window.URL.revokeObjectURL(url);
+                    }, 100);
+                }
+            },
+
+            mounted() {
+                this.drawLine();    
+            },
+
+            template: `
+                <div>
+                    <h1>
+                        <span>录制Canvas示例</span>
+                    </h1>
+                    <div>
+                        <div>
+                            <canvas ref="canvas"></canvas>
+                        </div>
+                        <video ref="video" playsInline autoplay></video>
+                    </div>
+                    <button @click="startCaptureCanvas">开始</button>
+                    <button @click="stopRecord">停止</button>
+                </div>
+            `
+        });
+
+        createApp(component).mount('#app');
+    </script>
+</body>
+</html>
