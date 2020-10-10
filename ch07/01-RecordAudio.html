@@ -11,13 +11,19 @@
     <script>
         const { defineComponent, createApp } = Vue;
 
+        //录制对象
         let mediaRecorder;
+        //录制数据
         let recordedBlobs;
+        //音频播放对象
         let audioPlayer;
-
+        /**
+         * 录制音频示例
+         */
         const component = defineComponent({
             data() {
                 return {
+                    //录制状态
                     status: "start"
                 }
             },
@@ -33,61 +39,90 @@
                         console.log('navigator.mediaDevices.getUserMedia error: ', error);
                     }
                 },
-                startRecordButtonClickHandler() {
+                //开始录制
+                startRecordButtonClickHandler(e) {
                     recordedBlobs = [];
-                    let options = { mimeType: "audio/webm; codecs=opus"};
+                    //媒体类型
+                    let options = { mineType: 'audio/ogg;' };
                     try {
-                        mediaRecorder = new MediaRecorder(window.stream, options);
-                    } catch (error) {
-                        console.log('MediaRecorder创建失败:', error);
-                        return;
+                    //初始化MediaRecorder对象,传入音频流及媒体类型
+                    mediaRecorder = new MediaRecorder(window.stream, options);
+                    } catch (e) {
+                    console.error('MediaRecorder创建失败:', e);
+                    return;
                     }
 
+                    //录制停止事件回调
                     mediaRecorder.onstop = (event) => {
-                        console.log('Recorder stopped: ', event);
-                        console.log('Recorded Blobs: ', recordedBlobs);
-                    }
-
+                    console.log('Recorder stopped: ', event);
+                    console.log('Recorded Blobs: ', recordedBlobs);
+                    };
+                    //当数据有效时触发的事件,可以把数据存储到缓存区里
                     mediaRecorder.ondataavailable = this.handleDataAvailable;
+                    //录制10秒
                     mediaRecorder.start(10);
                     console.log('MediaRecorder started', mediaRecorder);
+
+                    //设置当前状态为stopRecord
                     this.status = 'stopRecord';
                 },
+
+                 //停止录制
                 stopRecordButtonClickHandler() {
                     mediaRecorder.stop();
+                    //设置当前状态为play
                     this.status = 'play';
                 },
+
+                //播放录制数据
                 playButtonClickHandler() {
+                    //生成blob文件,类型为audio/ogg
                     const blob = new Blob(recordedBlobs, { type: 'audio/ogg' });
+
                     audioPlayer.src = null;
+                    //根据blob文件生成播放器的数据源
                     audioPlayer.src = window.URL.createObjectURL(blob);
+                    //播放声音
                     audioPlayer.play();
+                    //设置当前状态为download
                     this.status = "download";
                 },
+                //下载录制文件
                 downloadButtonClickHandler(e) {
+                    //生成blob文件,类型为audio/ogg
                     const blob = new Blob(recordedBlobs, { type:'audio/ogg' });
+                    //URL.createObjectURL()方法会根据传入的参数创建一个指向该参数对象的URL
                     const url = window.URL.createObjectURL(blob);
+                    //创建a标签
                     const a = document.createElement('a');
                     a.style.display = 'none'
                     a.href = url;
                     a.download = 'test.ogg';
+                    //将a标签添加至网页上去
                     document.body.appendChild(a);
                     a.click();
                     setTimeout(()=>{
                         document.body.removeChild(a);
+                        //URL.revokeObjectURL()方法会释放一个通过URL.createObjectURL()创建的对象URL.
+                        window.URL.revokeObjectURL(url);
                     }, 100);
-
+                    //设置当前状态为start
                     this.status = 'start';
                 },    
+
+                //录制数据回调事件
                 handleDataAvailable(event) {
                     console.log('handleDataAvailable', event);
+                    //判断是否有数据
                     if (event.data && event.data.size > 0) {
+                        //将数据记录起来
                         recordedBlobs.push(event.data);
                     }
                 }
             },
 
             mounted() {
+                //获取音频播放器
                 audioPlayer = this.$refs.audioPlayer;    
             },
 
